@@ -164,6 +164,8 @@ jobs:
 
           git commit -m "Pixeldrain Download: ${{ steps.info.outputs.filename }} [skip ci]" || echo "Nothing to commit"
 
+          git pull --rebase
+
           git push
 
       - name: Upload to GitHub Releases
