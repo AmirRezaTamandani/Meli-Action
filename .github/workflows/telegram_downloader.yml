@@ -42,7 +42,7 @@ jobs:
       # قدم اول: حذف پوشه downloads (درست مثل دکمه Delete directory)
       # ──────────────────────────────────────
 
-      - name: 🗑️ حذف پوشهٔ downloads (درست مثل Delete directory)
+      - name: 🗑️ حذف پوشهٔ downloads (در صورت وجود)
         if: github.event.inputs.clean_previous == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -64,6 +64,17 @@ jobs:
           TREE_SHA=$(curl -s -H "$AUTH" -H "$ACCEPT" "$API/git/commits/$COMMIT_SHA" | jq -r '.tree.sha')
           echo "   Tree: $TREE_SHA"
 
+          echo "📡 بررسی وجود پوشهٔ downloads در درخت..."
+          TREE_CONTENT=$(curl -s -H "$AUTH" -H "$ACCEPT" "$API/git/trees/$TREE_SHA?recursive=1")
+          HAS_DOWNLOADS=$(echo "$TREE_CONTENT" | jq '[.tree[]? | select(.path | startswith("downloads/"))] | length')
+
+          if [ "$HAS_DOWNLOADS" -eq 0 ]; then
+            echo "📂 پوشهٔ downloads وجود ندارد – نیازی به حذف نیست."
+            exit 0
+          fi
+
+          echo "🔍 پوشهٔ downloads پیدا شد – در حال حذف..."
+          
           echo "📝 ایجاد درخت جدید (فقط با حذف downloads)..."
           NEW_TREE_SHA=$(curl -s -X POST -H "$AUTH" -H "$ACCEPT" \
             -d "{\"base_tree\":\"${TREE_SHA}\",\"tree\":[{\"path\":\"downloads\",\"mode\":\"040000\",\"type\":\"tree\",\"sha\":null}]}" \
@@ -93,7 +104,7 @@ jobs:
             echo "$PATCH_RESULT"
             exit 1
           fi
-    
+
       # ──────────────────────────────────────
       # قدم دوم: دریافت شاخه (حالا سبک)
       # ──────────────────────────────────────
